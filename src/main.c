@@ -1,6 +1,9 @@
 #include "main.h"
 
-#define CODED_DATA_LENGTH 	11
+#define LEFT_DATA_LENGTH 	5
+#define RIGHT_DATA_LENGTH 	6
+#define CENTER_DATA_LENGTH 	7
+#define READY_DATA_LENGTH 	7
 
 // local variables
 static volatile uint32_t sysTickCnt = 0;
@@ -9,8 +12,14 @@ static volatile uint32_t sysTickCnt = 0;
 static inline void configureGPIO(void);
 static inline void configureGps(void);
 
-static char data[CODED_DATA_LENGTH] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o',
-		'r', 'l', 'd' };
+static unsigned char leftData[LEFT_DATA_LENGTH] = { 'l', 'e', 'f', 't', ' ' };
+static unsigned char rightData[RIGHT_DATA_LENGTH] = { 'r', 'i', 'g', 'h', 't',
+		' ' };
+static unsigned char centerData[CENTER_DATA_LENGTH] = { 'c', 'e', 'n', 't', 'e',
+		'r', ' ' };
+
+static unsigned char readyData[READY_DATA_LENGTH] = { 'r', 'e', 'a', 'd', 'y',
+		0xD, 0xA };
 
 /**
  **===========================================================================
@@ -27,10 +36,12 @@ int main(void) {
 
 	if (ClkStatus != RESET) {
 
-		configureUSART2();
-
 		configureGPIO();
 		configureGps();
+
+		configureUSART2();
+		transmitUSART2(readyData, READY_DATA_LENGTH);
+
 		SysTick_Config((uint32_t) 0x00802C7F);
 
 		GPIOA->ODR |= GPIO_ODR_ODR_5;
@@ -57,11 +68,23 @@ void SysTick_Handler(void) {
 	if (++sysTickCnt > 9) {
 		GPIOA->ODR ^= GPIO_ODR_ODR_5;
 		sysTickCnt = 0;
-		transmitUSART2(data, CODED_DATA_LENGTH);
+	}
+
+	if (serialDataAvailable()) {
+		unsigned char command = readSerialData();
+		switch (command) {
+		case 'L':
+			transmitUSART2(leftData, LEFT_DATA_LENGTH);
+			break;
+		case 'R':
+			transmitUSART2(rightData, RIGHT_DATA_LENGTH);
+			break;
+		case 'C':
+			transmitUSART2(centerData, CENTER_DATA_LENGTH);
+			break;
+		}
 	}
 }
-
-/**
 
 /**
  **===========================================================================
